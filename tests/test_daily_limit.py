@@ -8,18 +8,25 @@ def _rm():
 
 
 def test_primer_trade_permitido():
-    """El primer trade (riesgo 100$) debe permitirse con limite 100$ (margen flotacion)."""
+    """El primer trade (riesgo 100$) debe permitirse con limite 100$."""
     rm = _rm()
     risk_amount = rm.current_capital * (rm.risk_per_trade_pct / 100)  # 100.0
     assert rm.can_trade(risk_amount) is True
 
 
-def test_daily_limit_blocks_second_trade():
-    """Tras 1 trade perdido (100$), no puede arriesgar 100$ mas (limite 100$)."""
+def test_puede_operar_con_perdida_pequena():
+    """Tras perder 2.12$, aun puede abrir trade de 100$ (limite 100$ no alcanzado)."""
     rm = _rm()
+    rm.record_trade(-2.12)
     risk_amount = rm.current_capital * (rm.risk_per_trade_pct / 100)
     assert rm.can_trade(risk_amount) is True
-    rm.record_trade(-100.0)  # perdio el riesgo maximo del dia
+
+
+def test_daily_limit_blocks_after_full_loss():
+    """Tras acumular 100$ de perdida real, no puede abrir mas."""
+    rm = _rm()
+    rm.record_trade(-100.0)
+    risk_amount = rm.current_capital * (rm.risk_per_trade_pct / 100)
     assert rm.can_trade(risk_amount) is False
 
 

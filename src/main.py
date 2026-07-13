@@ -16,7 +16,6 @@ from src.notifier import Notifier
 from src.db import Database
 from src.exporter import Exporter
 from src.dashboard import Dashboard
-from src.polymarket_tracker import WalletTracker, TRADERS
 
 logger = logging.getLogger("kavana.trading")
 
@@ -43,7 +42,6 @@ class TradingLoop:
         self.notifier = notifier
         self.database = database
         self.sheets_url = sheets_url or Config.APPS_SCRIPT_URL or os.getenv("GOOGLE_SHEET_URL") or Config.WEBHOOK_URL
-        self.polymarket_wallets = WalletTracker(webhook_url=self.sheets_url)
         self.symbols = symbols or Config.SYMBOLS
         self.interval = interval_seconds
         self._running = False
@@ -66,7 +64,6 @@ class TradingLoop:
             try:
                 self.scan_cycle()
                 await self.manage_positions()
-                await self._scan_polymarket()
                 await self._export_dashboard()
             except Exception as e:
                 logger.error("Error en ciclo principal: %s", e)
@@ -195,34 +192,6 @@ class TradingLoop:
                         )
             except Exception as e:
                 logger.warning("⚠️ Error gestionando %s: %s", symbol, e)
-
-    async def _scan_polymarket(self):
-        """Rastrea wallets de Polymarket (sin cambios)."""
-        import time as time_module
-        if not hasattr(self, '_pm_last_scan'):
-            self._pm_last_scan = 0
-        now = time_module.time()
-        if now - self._pm_last_scan < 180:
-            return
-        self._pm_last_scan = now
-
-        try:
-            total = 0
-            for trader_info in TRADERS:
-                address = trader_info["proxy_address"]
-                alias = trader_info["alias"]
-                trades = self.polymarket_wallets.fetch_user_trades(address)
-                nuevos = self.polymarket_wallets.get_new_trades(address, trades)
-                for t in nuevos[:3]:
-                    ok = await self.polymarket_wallets.send_trade_to_webhook(
-                        t, alias=alias, capital=self.trader.risk.current_capital
-                    )
-                    if ok:
-                        total += 1
-            if total:
-                logger.info("📊 Polymarket: %d trades nuevos de wallets seguidas", total)
-        except Exception as e:
-            logger.warning("⚠️ Error rastreando Polymarket: %s", e)
 
     async def _export_dashboard(self):
         try:

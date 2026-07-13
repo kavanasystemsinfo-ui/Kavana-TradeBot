@@ -98,9 +98,6 @@ async def handle_csv_real(request: web.Request) -> web.Response:
 async def handle_csv_labs(request: web.Request) -> web.Response:
     return await _csv_for_sheet(request, "LABS")
 
-async def handle_csv_polymarket(request: web.Request) -> web.Response:
-    return await _csv_for_sheet(request, "POLYMARKET")
-
 
 async def _csv_for_sheet(request: web.Request, sheet_name: str) -> web.Response:
     """Sirve CSV filtrado por pestaña."""
@@ -123,7 +120,17 @@ async def _csv_for_sheet(request: web.Request, sheet_name: str) -> web.Response:
 
 
 async def handle_html(request: web.Request) -> web.Response:
-    """Mini dashboard web."""
+    """Sirve el Dashboard completo del bot (dashboard.html en volumen compartido).
+
+    Si el bot ha generado dashboard.html, se sirve ese (capital, ROI, equity,
+    win rate con decimales correctos). Si no existe, fallback al mini-dashboard.
+    """
+    dashboard_path = Path("/app/data/dashboard.html")
+    if dashboard_path.exists():
+        return web.Response(text=dashboard_path.read_text(encoding="utf-8"),
+                            content_type="text/html")
+
+    # Fallback: mini dashboard desde la DB
     conn = sqlite3.connect(str(DB_PATH))
     rows = conn.execute(
         "SELECT * FROM trades ORDER BY id DESC LIMIT 50"
@@ -191,7 +198,6 @@ def make_app() -> web.Application:
     app.router.add_get("/trades.csv", handle_csv_real)
     app.router.add_get("/trades/real.csv", handle_csv_real)
     app.router.add_get("/trades/labs.csv", handle_csv_labs)
-    app.router.add_get("/trades/polymarket.csv", handle_csv_polymarket)
     app.router.add_get("/", handle_html)
     app.router.add_get("/dashboard", handle_pwa)
     return app

@@ -43,10 +43,10 @@ class TestRiskManager:
             RiskManager(initial_capital=0)
 
     def test_daily_loss_limit(self, risk):
-        risk.daily_loss_limit = 100  # Max 100$ (10% de 1000$)
-        risk.daily_loss = 90
+        risk.daily_loss_limit = 100  # Max 100$ de perdida real (10% de 1000$)
+        risk.daily_loss = 100
         can_trade = risk.can_trade(risk_amount=20)
-        assert can_trade is False  # 90 + 20 > 100
+        assert can_trade is False  # perdida acumulada alcanzo el limite
 
     def test_daily_loss_limit_ok(self, risk):
         risk.daily_loss_limit = 100
