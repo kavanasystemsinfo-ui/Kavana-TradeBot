@@ -1,0 +1,25 @@
+# Secretos (NO subir al repo)
+.env
+*.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# Datos locales
+*.db
+*.sqlite
+*.sqlite3
+/data/
+/logs/
+
+# IDE / SO
+.vscode/
+.idea/
+.DS_Store

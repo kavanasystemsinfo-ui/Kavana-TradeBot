@@ -1,0 +1,32 @@
+services:
+  webhook:
+    build: .
+    container_name: kavana-webhook
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - shared_data:/app/data
+    environment:
+      - TZ=Europe/Madrid
+    ports:
+      - "8081:8081"
+    command: python -m src.webhook
+
+  trading:
+    build: .
+    container_name: kavana-trading
+    depends_on:
+      - webhook
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - shared_data:/app/data
+    environment:
+      - TZ=Europe/Madrid
+      - WEBHOOK_URL=http://localhost:8081/webhook
+    env_file:
+      - .env
+    network_mode: host
+
+volumes:
+  shared_data:
