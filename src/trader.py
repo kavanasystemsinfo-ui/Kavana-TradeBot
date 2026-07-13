@@ -97,10 +97,13 @@ class Trader:
 
         # Stop fijo al 10% del precio (modelo de Jorge: 10% de perdida máxima)
         stop_pct = 0.10
+        tp_pct = 0.10  # TP simétrico al stop (cierra ganando 10%)
         if direction == "BUY":
             stop_price = price * (1 - stop_pct)
+            tp_price = price * (1 + tp_pct)
         else:
             stop_price = price * (1 + stop_pct)
+            tp_price = price * (1 - tp_pct)
 
         # Riesgo por trade = %risk del capital actual (para el límite diario)
         risk_amount = self.risk.current_capital * (self.risk.risk_per_trade_pct / 100)
@@ -127,7 +130,8 @@ class Trader:
             direction=direction,
             entry_price=price,
             size=round(position_size, 2),
-            stop_loss=round(stop_price, 2),
+            stop_loss=round(stop_price, 6),
+            take_profit=round(tp_price, 6),
             vwap=vwap,
             atr=atr,
             funding_rate=funding_rate,
@@ -176,17 +180,30 @@ class Trader:
         if trade.direction == "SELL" and current_price >= trade.stop_loss:
             return self.close_trade(symbol, current_price, "SL_HIT")
 
-        # Take profit (solo si está configurado > 0)
+        # Take profit (simétrico al 10%)
         if trade.take_profit > 0:
             if trade.direction == "BUY" and current_price >= trade.take_profit:
                 return self.close_trade(symbol, current_price, "TP_HIT")
             if trade.direction == "SELL" and current_price <= trade.take_profit:
                 return self.close_trade(symbol, current_price, "TP_HIT")
 
-        # Duración máxima
+        # Trailing stop: tras +5% (en direccion del trade), sube el stop a break-even
+        if trade.direction == "BUY":
+            gain_pct = (current_price - trade.entry_price) / trade.entry_price
+        else:
+            gain_pct = (trade.entry_price - current_price) / trade.entry_price
+        if gain_pct >= 0.05 and trade.stop_loss < trade.entry_price:
+            # Mueve el stop a entrada (break-even): nunca se pasa de ganar a perder
+            trade.stop_loss = round(trade.entry_price, 6)
+
+        # Duración máxima: solo cierra por tiempo si esta en perdida.
+        # Si esta en ganancia, deja correr (el TP o trailing lo sacaran).
         elapsed = datetime.now(timezone.utc) - trade.opened_at
         if elapsed > timedelta(minutes=self.max_duration_min):
-            return self.close_trade(symbol, current_price, "MAX_DURATION")
+            if gain_pct < 0:  # en perdida -> cierra
+                return self.close_trade(symbol, current_price, "MAX_DURATION")
+            # en ganancia -> extiende la ventana para no cortar un trade ganador
+            trade.opened_at = datetime.now(timezone.utc)
 
         return None
 

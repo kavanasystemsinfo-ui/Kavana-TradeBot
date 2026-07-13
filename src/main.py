@@ -1,6 +1,8 @@
 """Bucle principal de trading v2.1 — Risk Manager + Analyzer profesional."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import asyncio
 import logging
 import os
@@ -206,8 +208,25 @@ class TradingLoop:
         if not self.database:
             return
         for trade in self.database.load_all_open_trades():
+            # Reset de opened_at al reinicio (la ventana de MAX_DURATION empieza ahora,
+            # no desde la apertura original en una sesion previa).
+            trade.opened_at = datetime.now(timezone.utc)
+            # Recalcular stop/TP al modelo KAVANA (10% fijo) usando el precio actual,
+            # por si la posicion se guardo con parametros viejos (ej. apalancamiento 10x).
+            try:
+                ticker = self.exchange.get_ticker(trade.symbol)
+                price = ticker["last"]
+            except Exception:
+                price = trade.entry_price
+            stop_pct = 0.10
+            if trade.direction == "BUY":
+                trade.stop_loss = round(price * (1 - stop_pct), 6)
+                trade.take_profit = round(price * (1 + stop_pct), 6)
+            else:
+                trade.stop_loss = round(price * (1 + stop_pct), 6)
+                trade.take_profit = round(price * (1 - stop_pct), 6)
             self.trader.positions[trade.symbol] = trade
-            logger.info("📂 Recuperada posición abierta: %s", trade.symbol)
+            logger.info("📂 Recuperada posición abierta: %s (stop recalculado 10%%)", trade.symbol)
 
 
 async def run_bot():
