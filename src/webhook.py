@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -12,6 +13,21 @@ import aiohttp
 from aiohttp import web
 
 logger = logging.getLogger("kavana.webhook")
+
+# Clave para escribir en el webhook. Si no está definida, el POST queda cerrado
+# (solo lectura pública en los GET). El dashboard nunca la expone.
+WEBHOOK_API_KEY = os.getenv("WEBHOOK_API_KEY", "")
+
+
+def _is_authorized(request: web.Request) -> bool:
+    """El POST /webhook solo lo puede usar quien conoce la API key.
+
+    El dashboard (GET) es público de lectura; el bot envía la key.
+    """
+    if not WEBHOOK_API_KEY:
+        # Sin key configurada: rechazar cualquier escritura (fail-closed)
+        return False
+    return request.headers.get("X-API-KEY", "") == WEBHOOK_API_KEY
 
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "webhook.db"
 
@@ -40,6 +56,9 @@ def init_db():
 
 
 async def handle_post(request: web.Request) -> web.Response:
+    # Solo escritura autenticada: evita inyeccion de trades falsos por pubblico
+    if not _is_authorized(request):
+        return web.json_response({"error": "unauthorized"}, status=401)
     try:
         data = await request.json()
     except Exception:
@@ -100,7 +119,6 @@ async def _csv_for_sheet(request: web.Request, sheet_name: str) -> web.Response:
     return web.Response(
         text="\n".join(csv_lines),
         content_type="text/csv",
-        headers={"Access-Control-Allow-Origin": "*"},
     )
 
 
@@ -165,8 +183,9 @@ async def handle_pwa(request: web.Request) -> web.Response:
     return web.Response(text="Dashboard no generado aún", status=202)
 
 
-async def start_webhook(host: str = "0.0.0.0", port: int = 8081):
-    init_db()
+def make_app() -> web.Application:
+    """Factoría de la app. El dashboard (GET) es público de lectura;
+    el POST /webhook exige X-API-KEY (ver _is_authorized)."""
     app = web.Application()
     app.router.add_post("/webhook", handle_post)
     app.router.add_get("/trades.csv", handle_csv_real)
@@ -175,6 +194,12 @@ async def start_webhook(host: str = "0.0.0.0", port: int = 8081):
     app.router.add_get("/trades/polymarket.csv", handle_csv_polymarket)
     app.router.add_get("/", handle_html)
     app.router.add_get("/dashboard", handle_pwa)
+    return app
+
+
+async def start_webhook(host: str = "0.0.0.0", port: int = 8081):
+    init_db()
+    app = make_app()
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, host, port)
