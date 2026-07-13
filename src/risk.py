@@ -39,7 +39,7 @@ class RiskManager:
         self.max_risk_pct = max_risk_pct
         self.atr_multiplier = atr_multiplier
         self.kelly_pct = kelly_fraction
-        self.daily_loss_limit = daily_loss_limit or initial_capital * 0.05  # 5% por defecto
+        self.daily_loss_limit = daily_loss_limit or initial_capital * 0.10  # 10% por defecto
         self.max_open_trades = max_open_trades
 
         # Estado dinámico
@@ -49,25 +49,21 @@ class RiskManager:
         self.trade_history: list[dict] = []
 
     def calculate_position_size(self, entry_price: float, stop_price: float) -> float:
-        """Calcula el tamaño de posición usando riesgo fijo.
+        """Calcula el tamaño de posición = 10% del capital actual.
 
-        Tamaño = (Capital * %riesgo) / (%distancia_stop)
+        Modelo KAVANA: la posición es SIEMPRE el %risk del capital
+        (por defecto 10%), independiente de la distancia al stop.
+        El stop (10% del precio) garantiza que, si salta, la perdida
+        es el 10% de la posición (p.ej. 1000$->100$->10$ de perdida).
         """
         if entry_price <= 0 or stop_price <= 0:
             raise RiskError("Precios inválidos")
-        if stop_price >= entry_price:
-            raise RiskError("El stop debe estar por debajo del entry (para LONG)")
 
-        risk_amount = self.current_capital * (self.risk_per_trade_pct / 100.0)
-        stop_distance_pct = (entry_price - stop_price) / entry_price
+        # Posición = %risk del capital actual (modelo de Jorge: 10% fijo)
+        position_size = self.current_capital * (self.risk_per_trade_pct / 100.0)
 
-        if stop_distance_pct <= 0:
-            raise RiskError("Distancia de stop inválida")
-
-        position_size = risk_amount / stop_distance_pct
-
-        # Limitar al capital disponible
-        max_size = self.current_capital * (self.max_risk_pct / 100.0) / stop_distance_pct
+        # Limitar al capital disponible (sin apalancamiento)
+        max_size = self.current_capital
         return min(position_size, max_size)
 
     def atr_stop(self, entry_price: float, atr: float, multiplier: Optional[float] = None) -> float:

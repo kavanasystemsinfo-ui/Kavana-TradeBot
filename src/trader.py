@@ -55,10 +55,11 @@ class Trader:
     def __init__(
         self,
         initial_capital: float = 10000.0,
-        leverage: int = 10,
-        risk_per_trade_pct: float = 1.0,
-        atr_multiplier: float = 2.0,
+        leverage: int = 1,
+        risk_per_trade_pct: float = 10.0,
+        atr_multiplier: float = 1.0,
         max_duration_min: int = 120,
+        daily_loss_limit: float | None = None,
     ):
         self.initial_capital = initial_capital
         self.leverage = leverage
@@ -71,6 +72,7 @@ class Trader:
             initial_capital=initial_capital,
             risk_per_trade_pct=risk_per_trade_pct,
             atr_multiplier=atr_multiplier,
+            daily_loss_limit=daily_loss_limit or initial_capital * 0.10,
         )
 
     def open_trade(
@@ -84,39 +86,38 @@ class Trader:
         funding_rate: float = 0.0,
         btc_dominance: float = 50.0,
     ) -> Trade:
-        """Abre posición usando Risk Manager para stop y tamaño."""
+        """Abre posición con el modelo KAVANA:
+
+        - Posición = %risk del capital (10% por defecto).
+        - Stop = 10% del precio de entrada (fijo, sin ATR ni palanca).
+        - Si el stop salta, la perdida máxima = 10% de la posición.
+        """
         if symbol in self.positions:
             raise RiskError(f"Ya tienes posición abierta en {symbol}")
 
-        # Usar ATR para stop dinámico si está disponible
-        if atr > 0 and direction == "BUY":
-            stop_price = self.risk.atr_stop(price, atr)
-            risk_amount = (price - stop_price) / price * self.risk.risk_per_trade_pct / 100
-        elif atr > 0 and direction == "SELL":
-            stop_price = price + (atr * self.risk.atr_multiplier)
-            risk_amount = (stop_price - price) / price * self.risk.risk_per_trade_pct / 100
+        # Stop fijo al 10% del precio (modelo de Jorge: 10% de perdida máxima)
+        stop_pct = 0.10
+        if direction == "BUY":
+            stop_price = price * (1 - stop_pct)
         else:
-            # Fallback: stop fijo basado en riesgo (2x el riesgo por trade)
-            stop_pct = self.risk.risk_per_trade_pct * 2 / 100
-            if direction == "BUY":
-                stop_price = price * (1 - stop_pct)
-            else:
-                stop_price = price * (1 + stop_pct)
-            risk_amount = self.risk.risk_per_trade_pct / 100
+            stop_price = price * (1 + stop_pct)
+
+        # Riesgo por trade = %risk del capital actual (para el límite diario)
+        risk_amount = self.risk.current_capital * (self.risk.risk_per_trade_pct / 100)
 
         # Validar límite diario y de posiciones
-        if not self.risk.can_trade(risk_amount * self.risk.current_capital):
+        # risk_amount = $ en riesgo de este trade (ya en dólares)
+        if not self.risk.can_trade(risk_amount):
             raise RiskError("Límite de riesgo diario o de posiciones alcanzado")
 
-        # Calcular tamaño con Risk Manager
+        # Tamaño = %risk del capital actual (sin apalancamiento)
         if size is None:
             position_size = self.risk.calculate_position_size(price, stop_price)
         else:
             position_size = size
 
-        # Limitar al capital disponible
-        max_size = self.risk.current_capital * self.leverage
-        position_size = min(position_size, max_size)
+        # Sin palanca: el tamaño nunca supera el capital disponible
+        position_size = min(position_size, self.risk.current_capital)
 
         if position_size <= 0:
             raise RiskError("Tamaño de posición inválido")

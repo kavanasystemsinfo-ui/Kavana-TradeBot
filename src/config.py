@@ -27,15 +27,16 @@ class Config:
     # --- Trading ---
     SYMBOLS: list[str] = os.getenv("SYMBOLS", "BTC/USDT,ETH/USDT,SOL/USDT,ADA/USDT,XRP/USDT").split(",")
     TIMEFRAME: str = os.getenv("TIMEFRAME", "15m")  # Cambiado a 15m (menos ruido)
-    LEVERAGE: int = int(os.getenv("LEVERAGE", "10"))
+    LEVERAGE: int = int(os.getenv("LEVERAGE", "1"))  # Sin palanca: riesgo real = riesgo de posicion
     INITIAL_CAPITAL: float = float(os.getenv("INITIAL_CAPITAL", "10000"))
 
     # --- Risk Management (nuevo) ---
-    RISK_PER_TRADE_PCT: float = float(os.getenv("RISK_PER_TRADE_PCT", "1.0"))  # 1% por trade
-    MAX_RISK_PCT: float = float(os.getenv("MAX_RISK_PCT", "2.0"))  # 2% máximo
-    ATR_MULTIPLIER: float = float(os.getenv("ATR_MULTIPLIER", "2.0"))  # 2 ATR para stop
+    RISK_PER_TRADE_PCT: float = float(os.getenv("RISK_PER_TRADE_PCT", "10.0"))  # 10% del capital en posicion
+    MAX_RISK_PCT: float = float(os.getenv("MAX_RISK_PCT", "10.0"))  # tope de posicion = 100% capital
+    STOP_PCT: float = float(os.getenv("STOP_PCT", "10.0"))  # stop fijo al 10% del precio
+    ATR_MULTIPLIER: float = float(os.getenv("ATR_MULTIPLIER", "1.0"))
     KELLY_FRACTION: float = float(os.getenv("KELLY_FRACTION", "0.25"))  # 25% de Kelly
-    DAILY_LOSS_LIMIT: float = float(os.getenv("DAILY_LOSS_LIMIT", "5.0"))  # 5% pérdida diaria
+    DAILY_LOSS_LIMIT: float = float(os.getenv("DAILY_LOSS_LIMIT", "10.0"))  # 10% del capital/dia
     MAX_OPEN_TRADES: int = int(os.getenv("MAX_OPEN_TRADES", "3"))
 
     # --- VWAP / Trend Filter (nuevo) ---
