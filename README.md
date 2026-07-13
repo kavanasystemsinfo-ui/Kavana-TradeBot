@@ -1,6 +1,6 @@
 # KAVANA Trading v2.1 — Paper Trading Bot
 
-> Bot de paper trading algorítmico que detecta tendencias de mercado y las ejecuta con gestión de riesgo institucional. **112 tests TDD | Python 3.12 | Docker | Telegram**
+> Bot de paper trading algorítmico que detecta tendencias de mercado y las ejecuta con gestión de riesgo institucional. **122 tests TDD | Python 3.12 | Docker | Telegram**
 
 ## El Problema
 
@@ -8,7 +8,7 @@ Un operador que vigila manualmente 5 pares cripto en velas de 5-15 min no puede 
 
 ## Nuestra Solución
 
-KAVANA Trading automatiza el ciclo completo: **lee** datos de KuCoin, **detecta** tendencia con VWAP y momentum con RSI/MACD, **gestiona** el riesgo por trade (1% de la cuenta, stops ATR, criterio de Kelly) y **notifica** cada señal en Telegram con su dashboard de rendimiento.
+KAVANA Trading automatiza el ciclo completo: **lee** datos de KuCoin, **detecta** tendencia con VWAP y momentum con RSI/MACD, **gestiona** el riesgo por trade (10% del capital, stop 10% fijo, sin apalancamiento) y **notifica** cada señal en Telegram con su dashboard de rendimiento.
 
 Metodología **TDD + YAGNI** estricta: cada regla de mercado tiene pruebas que reproducen fallos reales, y se elimina todo código que no se ejecute.
 
@@ -18,12 +18,12 @@ Metodología **TDD + YAGNI** estricta: cada regla de mercado tiene pruebas que r
 # Levantar el bot (producción en VPS)
 docker compose up -d
 
-# Verificar que la suite pasa (112 tests)
+# Verificar que la suite pasa (122 tests)
 docker exec kavana-trading python -m pytest -q
 
 # Ver señales en vivo
 # → Telegram: 🚀 Bot v2.1 iniciado
-# → Dashboard: http://167.233.97.71:8081/dashboard
+# → Dashboard: https://trading.kavanasystems.com/
 ```
 
 **Backtest de validación (12/07/2026):** sobre las últimas ~70 velas de cada par, la lógica corregida genera **5-32 señales por símbolo** según tendencia. Antes del fix: 0 señales constantes.
@@ -54,7 +54,7 @@ docker exec kavana-trading python -m pytest -q
 | Core | Python 3.12 |
 | Exchange | ccxt (KuCoin) — solo lectura OHLCV |
 | Análisis | RSI, MACD, VWAP (20 velas), EMAs, ATR |
-| Risk | Stops ATR dinámicos, Kelly fraccional, límite de pérdida diaria |
+| Risk | Stop 10% fijo, TP 10% simétrico, trailing break-even, límite de pérdida diaria |
 | DB | SQLite con WAL |
 | Notifier | Telegram bot |
 | Dashboard | HTML + Chart.js |
@@ -65,11 +65,12 @@ docker exec kavana-trading python -m pytest -q
 | Métrica | Valor |
 |---------|-------|
 | Versión | **v2.1** |
-| Tests | **112 passed, 0 fallos** |
-| Risk per trade | 1,0% |
+| Tests | **122 passed, 0 fallos** |
+| Risk per trade | 10% del capital |
+| Apalancamiento | 1× (sin palanca) |
 | Trend filter | VWAP (umbral **0.15%**, configurable) |
 | Símbolos | BTC, ETH, SOL, ADA, XRP |
-| Dashboard | http://167.233.97.71:8081/dashboard |
+| Dashboard | https://trading.kavanasystems.com/ |
 
 ## Métricas de Resultado (realidad, no marketing)
 
@@ -84,11 +85,11 @@ docker exec kavana-trading python -m pytest -q
 | `INITIAL_CAPITAL` | 1000 | Capital inicial |
 | `SYMBOLS` | BTC,ETH,SOL,ADA,XRP | Activos vigilados |
 | `TIMEFRAME` | 5m | Temporalidad |
-| `LEVERAGE` | 10 | Apalancamiento |
-| `RISK_PER_TRADE_PCT` | 1.0 | % riesgo por trade |
-| `ATR_MULTIPLIER` | 2.0 | Stop dinámico ATR |
-| `KELLY_FRACTION` | 0.25 | Kelly fraccional |
-| `DAILY_LOSS_LIMIT` | 5.0 | % pérdida diaria máxima |
+| `LEVERAGE` | 1 | Apalancamiento (1× = sin palanca) |
+| `RISK_PER_TRADE_PCT` | 10.0 | % riesgo por trade (del capital actual) |
+| `ATR_MULTIPLIER` | 1.0 | No usado (stop fijo 10%) |
+| `KELLY_FRACTION` | 0.25 | No usado (sizing fijo 10%) |
+| `DAILY_LOSS_LIMIT` | 100 | $ pérdida diaria máxima (10% capital) |
 | `TREND_STRENGTH` | 0.0015 | Umbral de tendencia VWAP (0.15%) |
 | `TELEGRAM_BOT_TOKEN` | — | Token bot Telegram |
 
@@ -101,7 +102,7 @@ docker exec kavana-trading python -m pytest tests/test_analyzer_signals.py -v
 
 ## Documentación IT Consulting
 
-- `docs/ADR-010-motor-de-senales.md` — Bug de señales: lógica contradictoria + umbral VWAP irreal.
+- `docs/IT_AUDIT_2026-07-13.md` — Auditoría IT completa (estado, incidentes, seguridad, riesgos).
 - `docs/ADR-011-yagni-polymarket-cleanup.md` — Eliminación de código muerto.
 - `docs/DECISIONS_LOG.md` — Registro de decisiones y lecciones aprendidas.
 - `docs/technical-documentation.md` — Informe técnico completo.
