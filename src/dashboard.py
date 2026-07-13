@@ -12,6 +12,16 @@ from src.trader import Trade, TradeStatus
 logger = logging.getLogger("kavana.dashboard")
 
 
+def _fmt_price(price: float) -> str:
+    """Formatea precios respetando decimales pequeños (ADA 0.16) y miles (BTC 63000)."""
+    if price >= 1000:
+        return f"{price:,.2f}"
+    if price >= 1:
+        return f"{price:,.4f}"
+    # Precios < 1 (ADA, XRP): hasta 6 decimales sin ceros superfluos
+    return f"{price:.6f}".rstrip("0").rstrip(".")
+
+
 class Dashboard:
     """Genera dashboard HTML con métricas, equity curve y soporte PWA."""
 
@@ -124,7 +134,7 @@ new Chart(document.getElementById('chart'),{{
 
             rows.append(
                 f"<tr><td>{t.symbol}</td><td>{direction}</td>"
-                f"<td>${t.entry_price:,.0f}</td>"
+                f"<td>${_fmt_price(t.entry_price)}</td>"
                 f"<td class=\"{'positive' if t.pnl_usd > 0 else 'negative'}\">{pnl}</td>"
                 f"<td>{badge}</td></tr>"
             )

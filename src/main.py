@@ -133,8 +133,9 @@ class TradingLoop:
                     direction = "BUY" if signal == Signal.BUY else "SELL"
 
                     # Verificar límite diario antes de abrir
-                    risk_amount = self.trader.risk.risk_per_trade_pct / 100
-                    if not self.trader.risk.can_trade(risk_amount * self.trader.risk.current_capital):
+                    # risk_amount = $ en riesgo de este trade (10% del capital actual)
+                    risk_amount = self.trader.risk.current_capital * (self.trader.risk.risk_per_trade_pct / 100)
+                    if not self.trader.risk.can_trade(risk_amount):
                         logger.warning("⛔ %s | Límite diario de riesgo alcanzado", symbol)
                         continue
 

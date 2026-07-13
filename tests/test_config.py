@@ -16,7 +16,8 @@ class TestConfig:
         assert "ETH/USDT" in Config.SYMBOLS
 
     def test_default_leverage(self):
-        assert Config.LEVERAGE == 10
+        # Modelo KAVANA: sin apalancamiento (riesgo real = riesgo de posicion)
+        assert Config.LEVERAGE == 1
 
     def test_default_capital(self):
         assert Config.INITIAL_CAPITAL == 1000.0
@@ -25,9 +26,11 @@ class TestConfig:
         assert Config.TIMEFRAME == "5m"
 
     def test_default_risk_params(self):
-        assert Config.STOP_LOSS_PCT == 12
+        # Modelo KAVANA: posicion 10% capital, stop 10% fijo, 1x
+        assert Config.STOP_LOSS_PCT == 10
         assert Config.TAKE_PROFIT_PCT == 15
         assert Config.MAX_DURATION_MIN == 120
+        assert Config.RISK_PER_TRADE_PCT == 10.0
 
     def test_db_path_is_absolute(self):
         assert isinstance(Config.DB_PATH, Path)

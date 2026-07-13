@@ -103,10 +103,13 @@ class RiskManager:
         """Verifica si se puede abrir un nuevo trade.
 
         Comprueba:
-        - Límite diario de pérdidas
+        - Límite diario de pérdidas (permite 1 trade si risk_amount == limite)
         - Máximo de trades abiertos concurrentes
+
+        Nota: se usa un margen de 0.01$ para evitar errores de flotación
+        (p.ej. 1000*0.10 = 100.0000000001 > 100.0).
         """
-        if self.daily_loss + risk_amount > self.daily_loss_limit:
+        if self.daily_loss + risk_amount > self.daily_loss_limit + 0.01:
             logger.warning("Límite diario de pérdidas alcanzado: %.2f/%.2f",
                            self.daily_loss, self.daily_loss_limit)
             return False
