@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     volumes:
       - .:/app
-      - shared_data:/app/data
+      - /root/kavana-trading-v2/data:/app/data
     environment:
       - TZ=Europe/Madrid
     ports:
@@ -20,13 +20,10 @@ services:
     restart: unless-stopped
     volumes:
       - .:/app
-      - shared_data:/app/data
+      - /root/kavana-trading-v2/data:/app/data
     environment:
       - TZ=Europe/Madrid
       - WEBHOOK_URL=http://localhost:8081/webhook
     env_file:
       - .env
     network_mode: host
-
-volumes:
-  shared_data:
