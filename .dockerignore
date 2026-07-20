@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+
+# Python
+.venv/
+venv/
+*.pyc
+__pycache__/
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Docker
+Dockerfile
+docker-compose*.yml
+
+# Logs
+*.log
